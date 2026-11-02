@@ -1,0 +1,17 @@
+{
+  "name": "agent-deck",
+  "version": "1.0.0",
+  "description": "Local dashboard for all your Claude Code agents across accounts: needs-input alerts, output-ready signals, subagent groups and jump-to-terminal.",
+  "author": {
+    "name": "AdityaS"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dashboard",
+    "notifications",
+    "subagents",
+    "macos"
+  ],
+  "homepage": "https://github.com/activat0r/agent-deck",
+  "repository": "https://github.com/activat0r/agent-deck"
+}

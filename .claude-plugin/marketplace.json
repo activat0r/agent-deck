@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "agent-deck",
+  "description": "Agent Deck dashboard for Claude Code",
+  "owner": {
+    "name": "AdityaS"
+  },
+  "plugins": [
+    {
+      "name": "agent-deck",
+      "description": "Local dashboard for all your Claude Code agents across accounts.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

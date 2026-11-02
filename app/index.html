@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Deck</title>
+<link id="fav" rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Calm palette: warm paper neutrals, softened ink and muted status hues.
+   Every text pairing below is checked at >= 4.5:1. */
+:root {
+  --bg: #F4F2ED; --surface: #FBFAF7; --surface-2: #EFECE5; --ink: #2D2C29; --muted: #68645C;
+  --line: #E7E3DA; --line-strong: #D6D0C4; --ring: #3E4B47; --raised: #FFFFFF;
+  --primary: #3E4B47; --on-primary: #FBFAF7; --shadow: 40 35 25;
+  --waiting: #93560F; --waiting-bg: #F6EAD3; --waiting-line: #DDA54F;
+  --done: #2B6B45; --done-bg: #E2EFE4; --done-line: #7EB894;
+  --error: #A33F37; --error-bg: #F5E1DD; --error-line: #D58A80;
+  --working: #365E9F; --working-bg: #E2E9F4; --working-line: #8CA8D6;
+  --idle: #68645C; --idle-bg: #EEEBE4; --idle-line: #BDB6A8;
+  --work: #6A4DA3; --personal: #2C766D;
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1D1D20; --surface: #26262A; --surface-2: #303034; --ink: #E4E1DA; --muted: #A39F96;
+    --line: #333337; --line-strong: #47474D; --ring: #C9C4BA; --raised: #3A3A40;
+    --primary: #4A5753; --on-primary: #EFECE6; --shadow: 0 0 0;
+    --waiting: #E6B76A; --waiting-bg: #3A3122; --waiting-line: #B88C46;
+    --done: #8FCB9F; --done-bg: #213428; --done-line: #5E9C70;
+    --error: #EE9C92; --error-bg: #3E2725; --error-line: #B9675E;
+    --working: #A0BAE9; --working-bg: #232D41; --working-line: #6683B8;
+    --idle: #A39F96; --idle-bg: #303034; --idle-line: #6E6A63;
+    --work: #BBA8E6; --personal: #80CCC0;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 0 var(--s5); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; }
+
+/* Header */
+.bar { border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 2; }
+.bar .wrap { display: flex; align-items: center; gap: var(--s3); min-height: 60px; }
+.brand { display: flex; align-items: center; gap: var(--s2); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.brand .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--primary); color: var(--on-primary);
+  display: grid; place-items: center; }
+.brand .logo svg { width: 16px; height: 16px; }
+.live { margin-left: auto; display: flex; align-items: center; gap: var(--s2); font: 500 12px var(--mono); color: var(--muted); }
+.live .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--done-line); }
+.live.off { color: var(--error); }
+.live.off .pip { background: var(--error-line); }
+
+/* Summary */
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s3); margin: var(--s5) 0 var(--s4); }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: var(--s3) var(--s4);
+  display: flex; flex-direction: column; gap: 2px; }
+.stat .k { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.stat .k svg { width: 15px; height: 15px; color: var(--c); }
+.stat .v { font: 600 26px/1.2 var(--mono); color: var(--ink); }
+.stat.hot { border-color: var(--c-line); background: var(--c-bg); }
+.stat.hot .v { color: var(--c); }
+
+/* Sections */
+.sec-h { display: flex; align-items: center; gap: var(--s2); margin: var(--s5) 0 var(--s3);
+  font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.sec-h.attn { color: var(--waiting); }
+
+/* Rows */
+/* Agents as a card grid: as many columns as fit, cards in a row share a height. */
+.rows { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  align-items: stretch; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  transition: border-color .2s, box-shadow .2s; }
+.row:hover { border-color: var(--line-strong); box-shadow: 0 2px 12px rgb(var(--shadow) / .07); }
+.row.unseen { box-shadow: 0 0 0 1px var(--c-line); border-color: var(--c-line); }
+.row .rail { height: 4px; flex: none; background: var(--c-line); }
+.row .body { padding: var(--s3) var(--s4); min-width: 0; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.row .side { padding: var(--s3) var(--s4); display: flex; align-items: center; gap: var(--s2);
+  border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+.row .side .btn:first-child { flex: 1; justify-content: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row .detail { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Three whole lines; the bottom gap is a border so a 4th line can't peek through padding. */
+.row .output:not(.open) { max-height: calc(3 * 1.55em + 16px); padding-bottom: 0;
+  border-bottom: 8px solid var(--surface-2); }
+.title { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-width: 0; }
+.proj { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; color: var(--c); background: var(--c-bg); white-space: nowrap; }
+.badge svg { width: 14px; height: 14px; }
+.acct { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 6px; border: 1px solid currentColor; }
+.acct-work { color: var(--work); }
+.acct-personal { color: var(--personal); }
+.meta { display: flex; gap: var(--s3); flex-wrap: wrap; font: 12px var(--mono); color: var(--muted); }
+.meta span { display: inline-flex; align-items: center; gap: 4px; }
+.meta svg { width: 13px; height: 13px; }
+.meta .br { color: var(--ink); font-weight: 500; }
+.pid { width: 26px; height: 26px; border-radius: 7px; flex: none; display: grid; place-items: center;
+  font: 600 11px var(--sans); letter-spacing: .02em; color: hsl(var(--h) 45% 28%); background: hsl(var(--h) 40% 90%);
+  border: 1px solid hsl(var(--h) 30% 78%); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pid { color: hsl(var(--h) 45% 82%); background: hsl(var(--h) 18% 24%); border-color: hsl(var(--h) 18% 36%); }
+}
+.ano { color: var(--muted); font-weight: 500; }
+.sub { display: inline-flex; align-items: center; gap: 4px; font: 500 12px var(--mono); color: var(--muted);
+  padding: 1px 7px; border-radius: 6px; background: var(--surface-2); }
+.sub svg { width: 13px; height: 13px; }
+.group { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--s3); padding: var(--s3);
+  border: 1px solid var(--line); border-left: 4px solid hsl(var(--h) 35% 62%); border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 45%, var(--bg)); }
+.kpane { background: var(--surface-2); border-radius: 8px; padding: 6px var(--s3) 8px; }
+.kp-h { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted);
+  padding: 2px 0 4px; }
+.kp-h svg { width: 13px; height: 13px; }
+.kp-h span { font-weight: 500; margin-left: auto; color: var(--muted); }
+.kpane ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.kpane li { display: grid; grid-template-columns: 16px minmax(0, max-content) minmax(0, 1fr); align-items: center;
+  gap: 8px; font-size: 12.5px; line-height: 1.5; padding: 3px 0; border-top: 1px solid var(--line); }
+.kpane li:first-child { border-top: 0; }
+.kpane li svg { width: 14px; height: 14px; color: var(--c); }
+.kpane .kt { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch; }
+.kpane .kd { font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpane li.s-waiting .kd { color: var(--waiting); font-weight: 500; }
+.kpane li.s-done .kd { color: var(--done); }
+.kp-more { font-size: 12px; color: var(--muted); padding-top: 4px; }
+.group.collapsed { grid-column: auto; }
+.gbar { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-height: 44px; padding: 6px var(--s3);
+  border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink);
+  font-size: 14px; font-weight: 600; text-align: left; transition: background .15s, border-color .15s; }
+.gbar:hover { border-color: hsl(var(--h) 35% 62%); background: var(--surface-2); }
+.gbar .chev { display: inline-grid; transition: transform .2s; }
+.gbar[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.gbar .chips { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+  padding: 1px 8px; border-radius: 999px; color: var(--c); background: var(--c-bg); }
+.chip svg { width: 13px; height: 13px; }
+.gall { margin-left: auto; display: inline-flex; gap: var(--s3); }
+.group-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 2px 4px; }
+.group-h svg { width: 14px; height: 14px; }
+.group-h b { color: var(--ink); }
+.kidgrid { position: relative; display: grid; gap: var(--s3); padding-left: 28px;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
+/* Connector from the main session down through its subagents. */
+.kidgrid::before { content: ""; position: absolute; left: 11px; top: -12px; bottom: 18px; width: 2px;
+  border-radius: 2px; background: hsl(var(--h) 35% 70%); }
+.subicon { width: 26px; height: 26px; border-radius: 7px; flex: none; display: grid; place-items: center;
+  color: hsl(var(--h) 45% 32%); background: hsl(var(--h) 40% 92%); }
+.subicon svg { width: 15px; height: 15px; }
+.pid.mini { width: 16px; height: 16px; border-radius: 4px; font-size: 8px; display: inline-grid; }
+.meta .of { color: var(--ink); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .subicon { color: hsl(var(--h) 45% 80%); background: hsl(var(--h) 18% 24%); }
+  :root:not([data-theme="light"]) .group { border-left-color: hsl(var(--h) 25% 45%); }
+  :root:not([data-theme="light"]) .kidgrid::before { background: hsl(var(--h) 20% 40%); }
+}
+.task { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.detail { font-size: 14px; word-break: break-word; }
+.detail.attn { color: var(--waiting); font-weight: 500; }
+.prompt { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt b { font-weight: 500; color: var(--ink); }
+.output { font: 12.5px/1.55 var(--mono); background: var(--surface-2); border-radius: 8px;
+  padding: var(--s2) var(--s3); white-space: pre-wrap; word-break: break-word; max-height: 3.2em; overflow: hidden; }
+.output.open { max-height: 360px; overflow: auto; }
+
+.btn { min-height: 44px; padding: 0 var(--s4); border-radius: 8px; border: 1px solid var(--line-strong);
+  background: var(--surface); display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;
+  white-space: nowrap; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.btn.primary:hover { opacity: .88; }
+.btn.icon { width: 44px; padding: 0; justify-content: center; color: var(--muted); }
+.btn.icon:hover { color: var(--ink); }
+.btn.link { min-height: 32px; border: 0; padding: 0; background: none; color: var(--muted); font-size: 13px; }
+.btn.link:hover { color: var(--ink); background: none; }
+
+/* Waiting rows stand out */
+.attnlist .row { border-color: var(--waiting-line); background: linear-gradient(180deg, var(--waiting-bg), var(--surface) 60%); }
+
+/* Account switcher: a segmented control. Selection = raised fill + weight +
+   account-colour bar; alerts = outline + badge only, so the two never look alike. */
+.tabs { display: inline-flex; gap: var(--s1); padding: var(--s1); margin: var(--s5) 0 var(--s3);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; max-width: 100%; overflow-x: auto; }
+.tab { position: relative; min-height: 44px; display: flex; align-items: center; gap: var(--s2); padding: 0 18px;
+  border: 1.5px solid transparent; border-radius: 9px; background: none; white-space: nowrap;
+  font-size: 15px; font-weight: 500; color: var(--muted); transition: color .15s, background .2s, box-shadow .2s, border-color .2s; }
+.tab:hover:not([aria-selected="true"]) { color: var(--ink); background: color-mix(in srgb, var(--raised) 55%, transparent); }
+.tab:active { transform: scale(.98); }
+.tab .adot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); opacity: .55; flex: none; }
+.tab[aria-selected="true"] { background: var(--raised); color: var(--ink); font-weight: 700;
+  box-shadow: 0 1px 2px rgb(var(--shadow) / .10), 0 3px 10px rgb(var(--shadow) / .07); }
+.tab[aria-selected="true"] .adot { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 3px;
+  height: 3px; border-radius: 3px; background: var(--acc); }
+.tab .n { font: 500 12px var(--mono); color: var(--muted); }
+.tab .cnt { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 1px 7px;
+  border-radius: 999px; color: var(--c); background: var(--c-bg); }
+.tab .cnt svg { width: 13px; height: 13px; }
+.tab.alert:not([aria-selected="true"]) { border-color: var(--c-line); color: var(--c); }
+.tab.alert.s-waiting .cnt { animation: ping 1.8s ease-out infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--waiting-line) 60%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+.acc-work { --acc: var(--work); }
+.acc-personal { --acc: var(--personal); }
+.panel-h { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font-size: 13px; color: var(--muted); }
+.panel-h b { color: var(--acc, var(--ink)); font-weight: 700; }
+.panel-h .adot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc, var(--muted)); }
+
+.empty { text-align: center; color: var(--muted); padding: var(--s6) var(--s4); border: 1px dashed var(--line-strong);
+  border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: var(--s2); }
+.empty svg { width: 28px; height: 28px; }
+footer { color: var(--muted); font-size: 12px; padding: var(--s6) 0; }
+
+.spin { animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Status color sets */
+.s-waiting { --c: var(--waiting); --c-bg: var(--waiting-bg); --c-line: var(--waiting-line); }
+.s-done { --c: var(--done); --c-bg: var(--done-bg); --c-line: var(--done-line); }
+.s-error { --c: var(--error); --c-bg: var(--error-bg); --c-line: var(--error-line); }
+.s-working { --c: var(--working); --c-bg: var(--working-bg); --c-line: var(--working-line); }
+.s-idle { --c: var(--idle); --c-bg: var(--idle-bg); --c-line: var(--idle-line); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 0 var(--s4); }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stats .stat:nth-child(n+4) { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <div class="brand"><span class="logo" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg></span>Agent Deck</div>
+    <div class="live" id="live" role="status"><span class="pip" aria-hidden="true"></span><span id="liveText">connecting…</span></div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="sr" aria-live="polite" aria-atomic="true" id="announce"></div>
+  <section class="stats" id="stats" aria-label="Session summary"></section>
+
+  <section id="waiting" hidden aria-labelledby="waitingH">
+    <h2 class="sec-h attn" id="waitingH"></h2>
+    <div class="rows attnlist" id="waitingList"></div>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Accounts" id="tabs"></div>
+  <section role="tabpanel" id="panel" aria-labelledby="">
+    <div class="panel-h" id="panelH"></div>
+    <div class="rows" id="list"></div>
+  </section>
+  <footer>Click a session to jump to it: its iTerm2 tab, or its project window in Android Studio / IntelliJ IDEA.</footer>
+</main>
+<script>
+// Display order: what needs you, what's running, then results and rest.
+const ORDER = { waiting: 0, working: 1, error: 2, done: 3, idle: 4 };
+const LABEL = { waiting: "Needs input", error: "Failed", done: "Output ready", working: "Working", idle: "Idle" };
+const FAV = { waiting: "#DDA54F", error: "#D58A80", done: "#7EB894", working: "#8CA8D6", idle: "#BDB6A8" };
+// Lucide-style icons so state is never conveyed by color alone.
+const ICON = {
+  waiting: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+  error: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+  done: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  working: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  idle: '<circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/>',
+  term: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  branch: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M18 8a6 6 0 0 1-6 6H8"/>',
+  app: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/>',
+  sub: '<path d="M6 3v10a4 4 0 0 0 4 4h10"/><path d="m16 13 4 4-4 4"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+};
+const icon = (k, cls = "") => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const stateIcon = st => icon(st, st === "working" ? "spin" : "");
+
+let data = { sessions: [], now: Date.now() / 1000 }, skew = 0, version = -1, lastOk = 0, online = false;
+const openOutputs = new Set();
+const TABS = ["Work", "Personal"];
+let tab = "Work";
+try { tab = localStorage.getItem("agentDeckTab") || tab; } catch {}
+// #work / #personal in the URL wins, so a view can be bookmarked.
+const fromHash = () => {
+  const h = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+  return h ? h.charAt(0).toUpperCase() + h.slice(1) : "";
+};
+if (fromHash()) tab = fromHash();
+addEventListener("hashchange", () => { if (fromHash()) { tab = fromHash(); render(); } });
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const now = () => Date.now() / 1000 - skew;
+function ago(t) {
+  const d = Math.max(0, now() - t);
+  if (d < 60) return Math.floor(d) + "s";
+  if (d < 3600) return Math.floor(d / 60) + "m";
+  return Math.floor(d / 3600) + "h " + Math.floor(d % 3600 / 60) + "m";
+}
+const home = p => p.replace(/^\/Users\/[^/]+/, "~");
+const rootOf = s => s.root || s.ide_root || s.cwd;
+const proj = s => rootOf(s).split("/").filter(Boolean).pop() || rootOf(s);
+const appName = s => (s.app || "").split("/").pop().replace(/\.app$/, "").replace(/^iTerm$/, "iTerm2");
+// Stable per-project hue and initials, so the same repo always looks the same.
+function projColor(s) {
+  let h = 0;
+  for (const c of rootOf(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h % 360;
+}
+const initials = name => (name.match(/[A-Za-z0-9]+/g) || ["?"]).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+// Agents sharing a project are numbered by start order: #1, #2...
+// "3 subagents running · 2 done" on a session that spawned subagents.
+function kids(s) {
+  const k = data.sessions.filter(x => x.parent === s.id);
+  if (!k.length) return "";
+  const n = st => k.filter(x => st.includes(x.state)).length;
+  const run = n(["working", "waiting"]), ready = n(["done", "error"]), idle = n(["idle"]);
+  return [run && `${run} subagent${run > 1 ? "s" : ""} running`, ready && `${ready} output ready`,
+    idle && `${idle} idle`].filter(Boolean).join(" · ");
+}
+
+function agentNo(s) {
+  if (s.parent) return 0;
+  const peers = data.sessions.filter(x => !x.parent && rootOf(x) === rootOf(s))
+    .sort((a, b) => (a.started || a.last) - (b.started || b.last));
+  return peers.length > 1 ? peers.indexOf(s) + 1 : 0;
+}
+
+function renderStats(all) {
+  const c = {};
+  all.forEach(s => c[s.state] = (c[s.state] || 0) + 1);
+  document.getElementById("stats").innerHTML = Object.keys(ORDER).map(k => {
+    const hot = c[k] && (k === "waiting" || k === "error" || k === "done");
+    return `<div class="stat s-${k} ${hot ? "hot" : ""}"><span class="k">${stateIcon(k)}${LABEL[k]}</span>
+      <span class="v">${c[k] || 0}</span></div>`;
+  }).join("");
+}
+
+// Explicit open/closed choices per parent session; otherwise a group is open
+// only while one of its subagents is still running or waiting.
+let groupPref = {};
+try { groupPref = JSON.parse(localStorage.getItem("agentDeckGroups") || "{}"); } catch {}
+const ACTIVE = new Set(["waiting", "working"]);
+const groupOpen = (pid, kids) => groupPref[pid] ?? kids.some(k => ACTIVE.has(k.state));
+function setGroups(ids, open) {
+  ids.forEach(id => groupPref[id] = open);
+  try { localStorage.setItem("agentDeckGroups", JSON.stringify(groupPref)); } catch {}
+  render();
+}
+
+// "2 running · 3 done" chips for a collapsed group.
+function kidSummary(kids) {
+  const c = {};
+  kids.forEach(k => c[k.state] = (c[k.state] || 0) + 1);
+  return Object.keys(ORDER).filter(k => c[k])
+    .map(k => `<span class="chip s-${k}">${stateIcon(k)}${c[k]} ${LABEL[k].toLowerCase()}</span>`).join("");
+}
+
+// A session with subagents becomes a group: its card, then its subagents indented
+// beneath it. Open groups span the row; collapsed ones tile like cards.
+function grouped(list) {
+  const kidsOf = {};
+  list.filter(s => s.parent).forEach(s => (kidsOf[s.parent] = kidsOf[s.parent] || []).push(s));
+  const items = [];
+  const rank = ss => Math.min(...ss.map(x => ORDER[x.state]));
+  const recent = ss => Math.max(...ss.map(x => x.last));
+  const groupHtml = (head, pid, kids) => {
+    kids.sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.started - b.started);
+    const open = groupOpen(pid, kids);
+    const n = `${kids.length} subagent${kids.length > 1 ? "s" : ""}`;
+    return `<section class="group ${open ? "" : "collapsed"}" style="--h:${projColor(kids[0])}" aria-label="${esc(parentLabel(kids[0]))} and ${n}">
+      ${head}
+      <button class="gbar" data-group="${esc(pid)}" aria-expanded="${open}" aria-controls="kids-${esc(pid)}">
+        <span class="chev" aria-hidden="true">${icon("chev")}</span>${open ? "Hide" : "Show"} ${n}
+        <span class="chips">${kidSummary(kids)}</span></button>
+      ${open ? `<div class="kidgrid" id="kids-${esc(pid)}">${kids.map(k => row(k, true)).join("")}</div>` : ""}</section>`;
+  };
+  for (const s of list.filter(s => !s.parent)) {
+    const kids = kidsOf[s.id];
+    delete kidsOf[s.id];
+    const all = [s, ...(kids || [])];
+    items.push({ rank: rank(all), last: recent(all), html: kids ? groupHtml(row(s), s.id, kids) : row(s) });
+  }
+  // Subagents whose session isn't in this list: it's waiting above, or has ended.
+  for (const [pid, kids] of Object.entries(kidsOf)) {
+    const p = data.sessions.find(x => x.id === pid);
+    const why = p && p.state === "waiting" ? "needs your input — shown above" : "is no longer listed";
+    items.push({ rank: rank(kids), last: recent(kids),
+      html: groupHtml(`<div class="group-h">${icon("sub")}Subagents of <b>${esc(parentLabel(kids[0]))}</b> · main session ${why}</div>`, pid, kids) });
+  }
+  // Active work first (waiting, running), then failed, finished, idle.
+  items.sort((a, b) => a.rank - b.rank || b.last - a.last);
+  return items.map(i => i.html).join("");
+}
+
+// What a subagent is doing right now, in a few words.
+function currentStep(k) {
+  if (k.state === "working" || k.state === "waiting" || k.state === "error") return k.detail || "Starting…";
+  if (k.state === "done") return "Output ready";
+  return "Idle";
+}
+
+// Small pane on a parent card: one line per subagent with its task and current step.
+const PANE_MAX = 6;
+function kidPane(s) {
+  if (s.parent) return "";
+  const k = data.sessions.filter(x => x.parent === s.id)
+    .sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.started - b.started);
+  if (!k.length) return "";
+  const more = k.length - PANE_MAX;
+  return `<div class="kpane" role="group" aria-label="Subagents of ${esc(proj(s))}">
+    <div class="kp-h">${icon("sub")}Subagents <span>${kids(s)}</span></div>
+    <ul>${k.slice(0, PANE_MAX).map(x => `<li class="s-${x.state}" title="${esc((x.task || x.agent_type) + " — " + currentStep(x))}">
+      ${stateIcon(x.state)}<span class="kt">${esc(x.task || x.agent_type || "Subagent")}</span>
+      <span class="kd">${esc(currentStep(x))}</span></li>`).join("")}</ul>
+    ${more > 0 ? `<div class="kp-more">+${more} more</div>` : ""}</div>`;
+}
+
+// Name of the session that spawned a subagent, as its own card would show it.
+function parentLabel(s) {
+  const p = data.sessions.find(x => x.id === s.parent);
+  return p ? proj(p) + (agentNo(p) ? ` #${agentNo(p)}` : "") : proj(s);
+}
+
+// nested: drawn inside its parent's group, so the shared context is left out.
+function row(s, nested = false) {
+  // An idle subagent keeps its delivered report viewable.
+  const out = s.output && (s.state === "done" || (s.parent && s.state === "idle"));
+  const showDetail = s.detail && s.state !== "done";
+  const sub = !!s.parent;
+  const name = sub ? (s.task || "Subagent task") : proj(s);
+  return `<article class="row s-${s.state} ${s.seen ? "" : "unseen"} ${sub ? "is-sub" : ""}" data-id="${esc(s.id)}"
+    aria-label="${sub ? "Subagent " : ""}${esc(name)}${sub ? " of " + esc(parentLabel(s)) : ""}, ${LABEL[s.state]}">
+    <div class="rail" aria-hidden="true"></div>
+    <div class="body">
+      <div class="title">
+        ${sub ? `<span class="subicon" style="--h:${projColor(s)}" aria-hidden="true">${icon("sub")}</span>`
+          : `<span class="pid" style="--h:${projColor(s)}" aria-hidden="true">${esc(initials(proj(s)))}</span>`}
+        <span class="proj" title="${esc(sub ? name : rootOf(s))}">${esc(name)}${agentNo(s) ? `<span class="ano"> #${agentNo(s)}</span>` : ""}</span>
+        <span class="badge">${stateIcon(s.state)}${LABEL[s.state]} · ${ago(s.since)}</span>
+        ${nested ? "" : `<span class="acct acct-${esc(s.account.toLowerCase())}">${esc(s.account)}</span>`}
+      </div>
+      ${sub ? `<div class="meta">
+        ${nested ? "" : `<span class="of"><span class="pid mini" style="--h:${projColor(s)}" aria-hidden="true">${esc(initials(proj(s)))}</span>subagent of ${esc(parentLabel(s))}</span>`}
+        <span class="sub">${esc(s.agent_type || "subagent")}</span>
+        <span title="Agent ${esc(s.agent_id)}">id ${esc(s.agent_id.slice(0, 8))}</span>
+      </div>` : `<div class="meta">
+        ${s.branch ? `<span class="br">${icon("branch")}${esc(s.branch)}</span>` : ""}
+        <span title="${esc(s.cwd)}">${esc(home(s.cwd))}</span>
+        ${s.app ? `<span>${icon("app")}${esc(appName(s))}</span>` : ""}
+        <span title="Session ${esc(s.id)}">id ${esc(s.id.slice(0, 8))}</span>
+      </div>`}
+      ${kidPane(s)}
+      ${showDetail ? `<div class="detail ${s.state === "waiting" ? "attn" : ""}">${esc(s.detail)}</div>` : ""}
+      ${s.prompt ? `<div class="prompt" title="${esc(s.prompt)}"><b>Prompt:</b> ${esc(s.prompt)}</div>` : ""}
+      ${out ? `<div class="output ${openOutputs.has(s.id) ? "open" : ""}" id="out-${esc(s.id)}">${esc(s.output)}</div>
+        <button class="btn link" data-act="toggle" aria-expanded="${openOutputs.has(s.id)}" aria-controls="out-${esc(s.id)}">
+          ${openOutputs.has(s.id) ? "Collapse output" : "Show full output"}</button>` : ""}
+    </div>
+    <div class="side">
+      ${s.iterm || s.app ? `<button class="btn ${s.state === "waiting" || !s.seen ? "primary" : ""}" data-act="focus">${icon("term")}${
+        s.iterm ? "Go to terminal" : "Open in " + esc(appName(s))}</button>` : ""}
+      ${s.seen ? "" : `<button class="btn icon" data-act="seen" aria-label="Mark ${esc(proj(s))} as seen" title="Mark seen">${icon("check")}</button>`}
+      <button class="btn icon" data-act="dismiss" aria-label="Dismiss ${esc(proj(s))}" title="Dismiss">${icon("x")}</button>
+    </div>
+  </article>`;
+}
+
+function renderTabs(all) {
+  // Work and Personal always show; any other account gets its own tab after them.
+  const names = [...TABS, ...new Set(all.map(s => s.account).filter(a => !TABS.includes(a)))];
+  if (!names.includes(tab)) tab = names[0];
+  document.getElementById("tabs").innerHTML = names.map(name => {
+    const mine = all.filter(s => s.account === name);
+    const waiting = mine.filter(s => s.state === "waiting").length;
+    const ready = mine.filter(s => (s.state === "done" || s.state === "error") && !s.seen).length;
+    const st = waiting ? "waiting" : ready ? "done" : "";
+    const cnt = st ? `<span class="cnt s-${st}">${stateIcon(st)}${waiting || ready}<span class="sr">${waiting ? " need input" : " ready"}</span></span>` : "";
+    const sel = name === tab;
+    return `<button class="tab acc-${esc(name.toLowerCase())} ${st ? "alert s-" + st : ""}" role="tab" id="tab-${esc(name)}"
+      aria-selected="${sel}" aria-controls="panel" tabindex="${sel ? 0 : -1}" data-tab="${esc(name)}">
+      <span class="adot" aria-hidden="true"></span>${esc(name)}<span class="n">${mine.length}</span>${cnt}</button>`;
+  }).join("");
+  const panel = document.getElementById("panel");
+  panel.setAttribute("aria-labelledby", "tab-" + tab);
+  const shown = all.filter(s => s.account === tab && s.state !== "waiting").length;
+  const ph = document.getElementById("panelH");
+  ph.className = "panel-h acc-" + tab.toLowerCase();
+  const groups = new Set(all.filter(s => s.account === tab && s.parent).map(s => s.parent)).size;
+  ph.innerHTML = `<span class="adot" aria-hidden="true"></span>Showing <b>${esc(tab)}</b> account · ${shown} session${shown === 1 ? "" : "s"}
+    ${groups ? `<span class="gall"><button class="btn link" data-groups="close">Collapse all</button>
+      <button class="btn link" data-groups="open">Expand all</button></span>` : ""}`;
+}
+
+let lastAnnounce = "";
+function render() {
+  // Re-rendering replaces the DOM, so carry keyboard focus across it.
+  const f = document.activeElement;
+  const fRow = f?.closest?.(".row")?.dataset.id, fAct = f?.dataset?.act, fTab = f?.dataset?.tab;
+  const fGroup = f?.dataset?.group, fAll = f?.dataset?.groups;
+  draw();
+  const target = fGroup ? [...document.querySelectorAll("[data-group]")].find(b => b.dataset.group === fGroup)
+    : fAll ? document.querySelector(`[data-groups="${fAll}"]`)
+    : fTab ? document.getElementById("tab-" + fTab)
+    : fRow ? [...document.querySelectorAll(".row")].find(r => r.dataset.id === fRow)
+        ?.querySelector(`[data-act="${fAct}"]`) : null;
+  target?.focus();
+}
+
+function draw() {
+  const all = [...data.sessions].sort((a, b) => ORDER[a.state] - ORDER[b.state] || b.last - a.last);
+  renderStats(all);
+  renderTabs(all);
+
+  // Waiting sessions from every account sit above the tabs, not inside them.
+  const waiting = all.filter(s => s.state === "waiting");
+  document.getElementById("waiting").hidden = !waiting.length;
+  document.getElementById("waitingH").innerHTML = `${icon("waiting")}Needs your input · ${waiting.length}`;
+  document.getElementById("waitingList").innerHTML = waiting.map(s => row(s)).join("");
+
+  const list = all.filter(s => s.account === tab && s.state !== "waiting");
+  const el = document.getElementById("list");
+  if (list.length) {
+    el.innerHTML = grouped(list);
+  } else {
+    const n = waiting.filter(s => s.account === tab).length;
+    el.innerHTML = `<div class="empty">${icon("inbox")}<div>${n
+      ? `Every ${esc(tab)} session that needs you is listed above.`
+      : `No active ${esc(tab)} sessions. Start one and it will appear here.`}</div></div>`;
+  }
+
+  // One atomic announcement instead of competing live regions.
+  const msg = waiting.length ? `${waiting.length} session${waiting.length > 1 ? "s" : ""} need${waiting.length > 1 ? "" : "s"} input` : "";
+  if (msg !== lastAnnounce) document.getElementById("announce").textContent = lastAnnounce = msg;
+
+  const top = all.length ? all[0].state : "idle";
+  const d = all.filter(s => s.state === "done" && !s.seen).length;
+  document.title = (waiting.length ? `(${waiting.length} waiting) ` : d ? `(${d} ready) ` : "") + "Agent Deck";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="${FAV[top]}"/></svg>`;
+  document.getElementById("fav").href = "data:image/svg+xml," + encodeURIComponent(svg);
+  renderLive();
+}
+
+function renderLive() {
+  const el = document.getElementById("live");
+  el.classList.toggle("off", !online);
+  document.getElementById("liveText").textContent = online
+    ? "live" : `offline · last update ${lastOk ? ago(lastOk) + " ago" : "never"}`;
+}
+
+async function act(action, id) {
+  await fetch(`/api/${action}/${encodeURIComponent(id)}`, { method: "POST" });
+}
+
+function selectTab(name, focus) {
+  tab = name;
+  try { localStorage.setItem("agentDeckTab", tab); } catch {}
+  history.replaceState(null, "", "#" + tab.toLowerCase());
+  render();
+  if (focus) document.getElementById("tab-" + name)?.focus();
+}
+
+const tabsEl = document.getElementById("tabs");
+tabsEl.addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]");
+  if (b) selectTab(b.dataset.tab);
+});
+tabsEl.addEventListener("keydown", e => {
+  const names = [...tabsEl.querySelectorAll("[data-tab]")].map(b => b.dataset.tab);
+  const i = names.indexOf(tab);
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: names.length - 1 }[e.key];
+  if (next === undefined) return;
+  e.preventDefault();
+  selectTab(names[(next + names.length) % names.length], true);
+});
+
+document.body.addEventListener("click", e => {
+  const g = e.target.closest("[data-group]");
+  if (g) return setGroups([g.dataset.group], g.getAttribute("aria-expanded") !== "true");
+  const all = e.target.closest("[data-groups]");
+  if (all) return setGroups([...document.querySelectorAll("#list [data-group]")].map(b => b.dataset.group),
+    all.dataset.groups === "open");
+  const r = e.target.closest(".row");
+  if (!r) return;
+  const id = r.dataset.id;
+  const btn = e.target.closest("button");
+  if (btn && btn.dataset.act === "toggle") {
+    openOutputs.has(id) ? openOutputs.delete(id) : openOutputs.add(id);
+    render();
+    return act("seen", id);
+  }
+  if (btn) return act(btn.dataset.act, id);
+  if (e.target.closest(".output") || getSelection().toString()) return;
+  const s = data.sessions.find(x => x.id === id);
+  act(s && (s.iterm || s.app) ? "focus" : "seen", id);
+});
+
+async function poll() {
+  while (true) {
+    try {
+      const r = await fetch(`/api/state?v=${version}`);
+      data = await r.json();
+      version = data.version;
+      skew = Date.now() / 1000 - data.now;
+      online = true;
+      lastOk = now();
+      render();
+    } catch {
+      online = false;
+      renderLive();
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+}
+setInterval(render, 5000);
+poll();
+</script>
+</body>
+</html>
