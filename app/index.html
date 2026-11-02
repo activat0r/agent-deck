@@ -341,11 +341,11 @@ function agentNo(s) {
 function renderStats(all) {
   const c = {};
   all.forEach(s => c[s.state] = (c[s.state] || 0) + 1);
-  document.getElementById("stats").innerHTML = Object.keys(ORDER).map(k => {
+  patch(document.getElementById("stats"), Object.keys(ORDER).map(k => {
     const hot = c[k] && (k === "waiting" || k === "error" || k === "done");
     return `<div class="stat s-${k} ${hot ? "hot" : ""}"><span class="k">${stateIcon(k)}${LABEL[k]}</span>
       <span class="v">${c[k] || 0}</span></div>`;
-  }).join("");
+  }).join(""));
 }
 
 // Explicit open/closed choices per parent session; otherwise a group is open
@@ -380,7 +380,7 @@ function grouped(list) {
     kids.sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.started - b.started);
     const open = groupOpen(pid, kids);
     const n = `${kids.length} subagent${kids.length > 1 ? "s" : ""}`;
-    return `<section class="group ${open ? "" : "collapsed"}" style="--h:${projColor(kids[0])}" aria-label="${esc(parentLabel(kids[0]))} and ${n}">
+    return `<section class="group ${open ? "" : "collapsed"}" data-key="${esc(pid)}" style="--h:${projColor(kids[0])}" aria-label="${esc(parentLabel(kids[0]))} and ${n}">
       ${head}
       <button class="gbar" data-group="${esc(pid)}" aria-expanded="${open}" aria-controls="kids-${esc(pid)}">
         <span class="chev" aria-hidden="true">${icon("chev")}</span>${open ? "Hide" : "Show"} ${n}
@@ -482,7 +482,7 @@ function renderTabs(all) {
   // Work and Personal always show; any other account gets its own tab after them.
   const names = [...TABS, ...new Set(all.map(s => s.account).filter(a => !TABS.includes(a)))];
   if (!names.includes(tab)) tab = names[0];
-  document.getElementById("tabs").innerHTML = names.map(name => {
+  patch(document.getElementById("tabs"), names.map(name => {
     const mine = all.filter(s => s.account === name);
     const waiting = mine.filter(s => s.state === "waiting").length;
     const ready = mine.filter(s => (s.state === "done" || s.state === "error") && !s.seen).length;
@@ -492,16 +492,16 @@ function renderTabs(all) {
     return `<button class="tab acc-${esc(name.toLowerCase())} ${st ? "alert s-" + st : ""}" role="tab" id="tab-${esc(name)}"
       aria-selected="${sel}" aria-controls="panel" tabindex="${sel ? 0 : -1}" data-tab="${esc(name)}">
       <span class="adot" aria-hidden="true"></span>${esc(name)}<span class="n">${mine.length}</span>${cnt}</button>`;
-  }).join("");
+  }).join(""));
   const panel = document.getElementById("panel");
   panel.setAttribute("aria-labelledby", "tab-" + tab);
   const shown = all.filter(s => s.account === tab && s.state !== "waiting").length;
   const ph = document.getElementById("panelH");
   ph.className = "panel-h acc-" + tab.toLowerCase();
   const groups = new Set(all.filter(s => s.account === tab && s.parent).map(s => s.parent)).size;
-  ph.innerHTML = `<span class="adot" aria-hidden="true"></span>Showing <b>${esc(tab)}</b> account · ${shown} session${shown === 1 ? "" : "s"}
+  patch(ph, `<span class="adot" aria-hidden="true"></span>Showing <b>${esc(tab)}</b> account · ${shown} session${shown === 1 ? "" : "s"}
     ${groups ? `<span class="gall"><button class="btn link" data-groups="close">Collapse all</button>
-      <button class="btn link" data-groups="open">Expand all</button></span>` : ""}`;
+      <button class="btn link" data-groups="open">Expand all</button></span>` : ""}`);
 }
 
 let lastAnnounce = "";
@@ -510,13 +510,50 @@ function render() {
   const f = document.activeElement;
   const fRow = f?.closest?.(".row")?.dataset.id, fAct = f?.dataset?.act, fTab = f?.dataset?.tab;
   const fGroup = f?.dataset?.group, fAll = f?.dataset?.groups;
+  const y = scrollY;
   draw();
+  if (scrollY !== y) scrollTo(scrollX, y);
   const target = fGroup ? [...document.querySelectorAll("[data-group]")].find(b => b.dataset.group === fGroup)
     : fAll ? document.querySelector(`[data-groups="${fAll}"]`)
     : fTab ? document.getElementById("tab-" + fTab)
     : fRow ? [...document.querySelectorAll(".row")].find(r => r.dataset.id === fRow)
         ?.querySelector(`[data-act="${fAct}"]`) : null;
   target?.focus();
+}
+
+// Update el's children to match html in place rather than replacing them, so a
+// redraw keeps unchanged nodes and their animations, scroll offsets and focus.
+const keyOf = n => n.nodeType === 1 && (n.dataset.id || n.dataset.group || n.dataset.tab || n.dataset.key)
+  ? n.nodeName + ":" + (n.dataset.id || n.dataset.group || n.dataset.tab || n.dataset.key) : null;
+function patch(el, html) {
+  const t = document.createElement("template");
+  t.innerHTML = html;
+  morphChildren(el, t.content);
+}
+function morph(o, n) {
+  if (o.nodeType !== 1) {
+    if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue;
+    return;
+  }
+  for (const { name } of [...o.attributes]) if (!n.hasAttribute(name)) o.removeAttribute(name);
+  for (const { name, value } of [...n.attributes]) if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+  morphChildren(o, n);
+}
+function morphChildren(cur, next) {
+  const keyed = new Map();
+  cur.childNodes.forEach(o => { const k = keyOf(o); if (k) keyed.set(k, o); });
+  let ref = cur.firstChild;
+  for (const n of [...next.childNodes]) {
+    const k = keyOf(n);
+    const o = k ? keyed.get(k)
+      : ref && !keyOf(ref) && ref.nodeType === n.nodeType && ref.nodeName === n.nodeName ? ref : null;
+    if (!o) { cur.insertBefore(n, ref); continue; }
+    if (k) keyed.delete(k);
+    morph(o, n);
+    if (o === ref) ref = ref.nextSibling;
+    else cur.insertBefore(o, ref);
+  }
+  while (ref) { const x = ref.nextSibling; ref.remove(); ref = x; }
 }
 
 function draw() {
@@ -527,18 +564,18 @@ function draw() {
   // Waiting sessions from every account sit above the tabs, not inside them.
   const waiting = all.filter(s => s.state === "waiting");
   document.getElementById("waiting").hidden = !waiting.length;
-  document.getElementById("waitingH").innerHTML = `${icon("waiting")}Needs your input · ${waiting.length}`;
-  document.getElementById("waitingList").innerHTML = waiting.map(s => row(s)).join("");
+  patch(document.getElementById("waitingH"), `${icon("waiting")}Needs your input · ${waiting.length}`);
+  patch(document.getElementById("waitingList"), waiting.map(s => row(s)).join(""));
 
   const list = all.filter(s => s.account === tab && s.state !== "waiting");
   const el = document.getElementById("list");
   if (list.length) {
-    el.innerHTML = grouped(list);
+    patch(el, grouped(list));
   } else {
     const n = waiting.filter(s => s.account === tab).length;
-    el.innerHTML = `<div class="empty">${icon("inbox")}<div>${n
+    patch(el, `<div class="empty">${icon("inbox")}<div>${n
       ? `Every ${esc(tab)} session that needs you is listed above.`
-      : `No active ${esc(tab)} sessions. Start one and it will appear here.`}</div></div>`;
+      : `No active ${esc(tab)} sessions. Start one and it will appear here.`}</div></div>`);
   }
 
   // One atomic announcement instead of competing live regions.
